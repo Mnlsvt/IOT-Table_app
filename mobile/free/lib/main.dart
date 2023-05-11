@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'dart:async';
 
 void main() {
   runApp(MyApp());
@@ -27,6 +28,31 @@ class _HomePageState extends State<HomePage> {
   int? selectedStoreId;
   int? selectedTableId;
   String boxColor = 'red';
+  Timer? timer;
+
+  @override
+  void initState() {
+    super.initState();
+    startTimer();
+  }
+
+  @override
+  void dispose() {
+    cancelTimer();
+    super.dispose();
+  }
+
+  void startTimer() {
+    timer = Timer.periodic(Duration(seconds: 3), (_) {
+      if (selectedStoreId != null && selectedTableId != null) {
+        fetchData(selectedStoreId!, selectedTableId!);
+      }
+    });
+  }
+
+  void cancelTimer() {
+    timer?.cancel();
+  }
 
   @override
   Widget build(BuildContext context) {
