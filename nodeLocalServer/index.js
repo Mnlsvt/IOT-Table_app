@@ -15,10 +15,11 @@ app.post("/sensor-data", async (req, res) => {
   const sensorData = req.body;
 
   // Check if the request body contains the "humidity" field
-  if ("table_value" in sensorData) {
+  if ("isFree" in sensorData) {
+    console.log(sensorData);
     // Process the "humidity" value here
-    const table_value = sensorData.table_value;
-    console.log(`Received table value: ${table_value}`);
+    const isFree = sensorData.isFree;
+    console.log(`Received table value: ${isFree}`);
 
     // Send data to MongoDB
     try {

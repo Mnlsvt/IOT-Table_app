@@ -12,14 +12,22 @@ app.use(bodyParser.json());
 app.use(cors());
 
 // Connect to MongoDB
-mongoose.connect("mongodb://mnlsvtserver.ddns.net:27017/IOT-TABLES", { useNewUrlParser: true });
+mongoose.connect("mongodb://mnlsvtserver.ddns.net:27017/IOT-FREE", { useNewUrlParser: true });
 
 // Create a schema for the sensor data
 const sensorDataSchemaTABLES = new mongoose.Schema({
-  table_value: String,
-  timestamp: {
-    type: Date,
-    default: Date.now,
+  storeId: {
+    type: Number,
+    required: true,
+  },
+  tableId: {
+    type: Number,
+    required: true,
+  },
+  isFree: {
+    type: String,
+    enum: ['yes', 'no'],
+    default: 'yes',
   },
 });
 
@@ -31,9 +39,9 @@ app.post("/api/sensor-data", (req, res) => {
   const sensorData = req.body;
 
   // Check if the request body contains the required fields
-  if ("table_value" in sensorData) {
-    // Check if a SensorData object already exists for the given table_value
-    SensorData.findOne({ table_value: sensorData.table_value }, (err, existingData) => {
+  if ("isFree" in sensorData && "storeId" in sensorData && "tableId" in sensorData) {
+    // Find the existing SensorData object in the database with matching storeId and tableId
+    SensorData.findOne({ storeId: sensorData.storeId, tableId: sensorData.tableId }, (err, existingData) => {
       if (err) {
         console.error(err);
         res.status(500).send("Error checking for existing sensor data");
@@ -41,7 +49,9 @@ app.post("/api/sensor-data", (req, res) => {
         if (!existingData) {
           // If no existing SensorData object found, create a new one
           const newData = new SensorData({
-            table_value: sensorData.table_value
+            storeId: sensorData.storeId,
+            tableId: sensorData.tableId,
+            isFree: sensorData.isFree
           });
           newData.save((err, data) => {
             if (err) {
@@ -52,9 +62,9 @@ app.post("/api/sensor-data", (req, res) => {
               res.send("New sensor data received and saved");
             }
           });
-        } else if (existingData.table_value !== sensorData.table_value) {
+        } else if (existingData.isFree !== sensorData.isFree) {
           // If an existing SensorData object found and the value is different, update its values
-          existingData.table_value = sensorData.table_value;
+          existingData.isFree = sensorData.isFree;
           existingData.save((err, data) => {
             if (err) {
               console.error(err);
@@ -71,19 +81,20 @@ app.post("/api/sensor-data", (req, res) => {
         }
       }
     });
-    
-    
-    } else {
-      res.status(400).send("Invalid sensor data");
+  } else {
+    res.status(400).send("Invalid sensor data");
   }
 });
 
 
 
-// API endpoint for retrieving the latest sensor data
-app.get("/api/sensor-data", (req, res) => {
-  // Find the latest SensorData object in the database
-  SensorData.findOne({}, {}, { sort: { 'createdAt' : -1 } }, (err, data) => {
+
+// API endpoint for retrieving the sensor data for a specific table
+app.get("/api/sensor-data/:storeId/:tableId", (req, res) => {
+  const { storeId, tableId } = req.params;
+  
+  // Find the SensorData object for the given storeId and tableId
+  SensorData.findOne({ storeId, tableId }, (err, data) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error retrieving sensor data");
@@ -98,20 +109,6 @@ app.get("/api/sensor-data", (req, res) => {
 
 
 
-/*
-// API endpoint for retrieving sensor data
-app.get("/api/sensor-data", (req, res) => {
-  // Find all SensorData objects in the database and return them as a JSON response
-  SensorData.find((err, data) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send("Error retrieving sensor data");
-    } else {
-      res.json(data);
-    }
-  });
-});
-*/
 const port = 4000;
 
 app.listen(port, () => {
