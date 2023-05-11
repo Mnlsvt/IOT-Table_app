@@ -14,20 +14,67 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(),
+      home: StorePage(),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
+class StorePage extends StatelessWidget {
+  final List<int> storeIds = [1, 2, 3];
+
   @override
-  _HomePageState createState() => _HomePageState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Stores'),
+      ),
+      body: ListView.builder(
+        itemCount: storeIds.length,
+        itemBuilder: (context, index) {
+          final storeId = storeIds[index];
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TablePage(storeId: storeId),
+                ),
+              );
+            },
+            child: Container(
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'Store $storeId',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _HomePageState extends State<HomePage> {
-  int? selectedStoreId;
-  int? selectedTableId;
-  String boxColor = 'red';
+class TablePage extends StatefulWidget {
+  final int storeId;
+
+  TablePage({required this.storeId});
+
+  @override
+  _TablePageState createState() => _TablePageState();
+}
+
+class _TablePageState extends State<TablePage> {
+  List<int> tableIds = [1, 2, 3];
+  Map<int, String> boxColors = {};
+
   Timer? timer;
 
   @override
@@ -44,9 +91,7 @@ class _HomePageState extends State<HomePage> {
 
   void startTimer() {
     timer = Timer.periodic(Duration(seconds: 3), (_) {
-      if (selectedStoreId != null && selectedTableId != null) {
-        fetchData(selectedStoreId!, selectedTableId!);
-      }
+      fetchData();
     });
   }
 
@@ -54,94 +99,50 @@ class _HomePageState extends State<HomePage> {
     timer?.cancel();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Sensor App'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            DropdownButton<int>(
-              value: selectedStoreId,
-              items: [
-                DropdownMenuItem(
-                  value: 1,
-                  child: Text('Store 1'),
-                ),
-                DropdownMenuItem(
-                  value: 2,
-                  child: Text('Store 2'),
-                ),
-                DropdownMenuItem(
-                  value: 3,
-                  child: Text('Store 3'),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  selectedStoreId = value;
-                  selectedTableId = null;
-                  boxColor = 'red';
-                });
-              },
-            ),
-            SizedBox(height: 16),
-            DropdownButton<int>(
-              value: selectedTableId,
-              items: [
-                DropdownMenuItem(
-                  value: 1,
-                  child: Text('Table 1'),
-                ),
-                DropdownMenuItem(
-                  value: 2,
-                  child: Text('Table 2'),
-                ),
-                DropdownMenuItem(
-                  value: 3,
-                  child: Text('Table 3'),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  selectedTableId = value;
-                  if (selectedStoreId != null && selectedTableId != null) {
-                    fetchData(selectedStoreId!, selectedTableId!);
-                  }
-                });
-              },
-            ),
-            SizedBox(height: 16),
-            Container(
-              width: 100,
-              height: 100,
-              color: boxColor == 'red' ? Colors.red : Colors.green,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void fetchData(int storeId, int tableId) async {
+  void fetchData() async {
     try {
-      final response = await Dio().get(
-        'http://mnlsvtserver.ddns.net:4000/api/sensor-data/$storeId/$tableId',
-      );
+      for (final tableId in tableIds) {
+        final response = await Dio().get(
+          'http://mnlsvtserver.ddns.net:4000/api/sensor-data/${widget.storeId}/$tableId',
+        );
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        setState(() {
-          boxColor = data['isFree'] == 'yes' ? 'green' : 'red';
-        });
-      } else {
-        print('Error: ${response.statusCode}');
+        if (response.statusCode == 200) {
+          final data = response.data;
+          setState(() {
+            boxColors[tableId] = data['isFree'] == 'yes' ? 'green' : 'red';
+          });
+        } else {
+          print('Error: ${response.statusCode}');
+        }
       }
     } catch (e) {
       print('Error: $e');
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Tables - Store ${widget.storeId}'),
+      ),
+      body: GridView.count(
+        crossAxisCount: 3,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        padding: EdgeInsets.all(16),
+        children: tableIds.map((tableId) {
+          final boxColor = boxColors[tableId] ?? 'red';
+          return GestureDetector(
+            onTap: () {
+              fetchData();
+            },
+            child: Container(
+              color: boxColor == 'red' ? Colors.red : Colors.green,
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 }
