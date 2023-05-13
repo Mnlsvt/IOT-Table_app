@@ -43,10 +43,12 @@ class StorePage extends StatelessWidget {
             },
             child: Container(
               height: 100,
+              margin: const EdgeInsets.only(
+                  left: 30, right: 30, bottom: 20, top: 30),
               decoration: BoxDecoration(
                 color: Colors.grey[300],
                 border: Border(
-                  bottom: BorderSide(color: Colors.grey),
+                  bottom: BorderSide(color: Colors.black),
                 ),
               ),
               alignment: Alignment.center,
@@ -90,7 +92,7 @@ class _TablePageState extends State<TablePage> {
   }
 
   void startTimer() {
-    timer = Timer.periodic(Duration(seconds: 3), (_) {
+    timer = Timer.periodic(Duration(seconds: 1), (_) {
       fetchData();
     });
   }
@@ -137,8 +139,22 @@ class _TablePageState extends State<TablePage> {
             onTap: () {
               fetchData();
             },
-            child: Container(
-              color: boxColor == 'red' ? Colors.red : Colors.green,
+            child: Stack(
+              // Wrap the Container with a Stack
+              children: [
+                Container(
+                  color: boxColor == 'red' ? Colors.red : Colors.green,
+                ),
+                Center(
+                  child: Text(
+                    'Table $tableId',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         }).toList(),
