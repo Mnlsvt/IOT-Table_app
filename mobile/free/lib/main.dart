@@ -1,12 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'dart:async';
+import 'dart:math';
 
 void main() {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final Map<int, Map<int, Alignment>> storeTablePositions = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final List<int> storeIds = [1, 2, 3];
+    final List<int> tableIds = [1, 2, 3];
+    final gridSize = sqrt(tableIds.length).ceil();
+    final cellSize = 2 / gridSize;
+    for (final storeId in storeIds) {
+      final positions = [
+        for (var y = 0; y < gridSize; y++)
+          for (var x = 0; x < gridSize; x++)
+            Alignment(-1 + cellSize * (x + 0.5), -1 + cellSize * (y + 0.5))
+      ]..shuffle();
+      storeTablePositions[storeId] = {
+        for (var i = 0; i < tableIds.length; i++) tableIds[i]: positions[i],
+      };
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,19 +41,25 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: StorePage(),
+      home: StorePage(storeTablePositions: storeTablePositions),
     );
   }
 }
 
 class StorePage extends StatelessWidget {
   final List<int> storeIds = [1, 2, 3];
+  final Map<int, Map<int, Alignment>> storeTablePositions;
+
+  StorePage({required this.storeTablePositions});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Stores'),
+        title: Text('Stores', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
       ),
       body: ListView.builder(
         itemCount: storeIds.length,
@@ -37,24 +70,24 @@ class StorePage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TablePage(storeId: storeId),
+                  builder: (context) => TablePage(
+                    storeId: storeId,
+                    tablePositions: storeTablePositions[storeId]!,
+                  ),
                 ),
               );
             },
             child: Container(
               height: 100,
-              margin: const EdgeInsets.only(
-                  left: 30, right: 30, bottom: 20, top: 30),
+              margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
-                border: Border(
-                  bottom: BorderSide(color: Colors.black),
-                ),
+                color: Colors.blue[200],
+                borderRadius: BorderRadius.circular(15),
               ),
               alignment: Alignment.center,
               child: Text(
                 'Store $storeId',
-                style: TextStyle(fontSize: 20),
+                style: TextStyle(fontSize: 20, color: Colors.white),
               ),
             ),
           );
@@ -66,8 +99,12 @@ class StorePage extends StatelessWidget {
 
 class TablePage extends StatefulWidget {
   final int storeId;
+  final Map<int, Alignment> tablePositions;
 
-  TablePage({required this.storeId});
+  TablePage({
+    required this.storeId,
+    required this.tablePositions,
+  });
 
   @override
   _TablePageState createState() => _TablePageState();
@@ -76,6 +113,7 @@ class TablePage extends StatefulWidget {
 class _TablePageState extends State<TablePage> {
   List<int> tableIds = [1, 2, 3];
   Map<int, String> boxColors = {};
+  Map<int, Alignment> boxPositions = {};
 
   Timer? timer;
 
@@ -83,6 +121,7 @@ class _TablePageState extends State<TablePage> {
   void initState() {
     super.initState();
     startTimer();
+    boxPositions = widget.tablePositions;
   }
 
   @override
@@ -125,39 +164,52 @@ class _TablePageState extends State<TablePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Tables - Store ${widget.storeId}'),
+        title: Text('Store ${widget.storeId}',
+            style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.black),
       ),
-      body: GridView.count(
-        crossAxisCount: 3,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        padding: EdgeInsets.all(16),
-        children: tableIds.map((tableId) {
-          final boxColor = boxColors[tableId] ?? 'red';
-          return GestureDetector(
-            onTap: () {
-              fetchData();
-            },
-            child: Stack(
-              // Wrap the Container with a Stack
-              children: [
-                Container(
-                  color: boxColor == 'red' ? Colors.red : Colors.green,
-                ),
-                Center(
-                  child: Text(
-                    'Table $tableId',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
+      body: Center(
+        child: Container(
+          width: 300,
+          height: 300,
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Stack(
+            children: tableIds.map((tableId) {
+              final boxColor = boxColors[tableId] ?? 'red';
+              return Align(
+                alignment: boxPositions[tableId]!,
+                child: GestureDetector(
+                  onTap: () {
+                    fetchData();
+                  },
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: boxColor == 'red' ? Colors.red : Colors.green,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$tableId',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }
